@@ -2,7 +2,9 @@
 title: "Practical Machine Learning Project"
 author: "Lena Abbasi Brujeni"
 date: "September 5, 2017"
-output: html_document
+output: md_document 
+keep_md: yes
+html_document: default
 ---
 ### 1. Summary
 This document is to address the final project for practical machine learning course, through coursera. The objective here is to use machine learning tools to predict the manner in which 6 participants performed exercise. This is equivalent to the “classe” variable in the training set. 20 test cases provided in the test dataset is used to evaluate the outcome of our machine learning models for the final quiz. The best model we have obtained here is by using Random Forest method.
