@@ -1,0 +1,123 @@
+---
+title: "Practical Machine Learning Project"
+author: "Lena Abbasi Brujeni"
+date: "September 5, 2017"
+output: html_document
+---
+### 1. Summary
+This document is to address the final project for practical machine learning course, through coursera. The objective here is to use machine learning tools to predict the manner in which 6 participants performed exercise. This is equivalent to the “classe” variable in the training set. 20 test cases provided in the test dataset is used to evaluate the outcome of our machine learning models for the final quiz. The best model we have obtained here is by using Random Forest method.
+
+### 2. Data Analysis 
+
+#### Data Creation 
+First step is to load the packages which will be used in this project, in addition to setting our working directory, and downloading provided datasets: 
+
+```{r setup, results='hide', message=FALSE, echo=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = 'hide', message = FALSE, warning = FALSE)
+library(knitr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(corrplot)
+library(data.table)
+library(kableExtra)
+library(base)
+library(ggplot2)
+
+setwd("C:\\Users\\lena_\\Documents\\Coursera\\Coursera Data Scientist\\Practical Machine Learning\\Week4")
+set.seed(7777)
+
+URL1 <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+URL2  <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+training <- read.csv(URL1)
+testing  <- read.csv(URL2)
+
+inTrain  <- createDataPartition(training$classe, p=0.7, list=FALSE)
+TrainingSet <- training[inTrain, ]
+TestSet  <- training[-inTrain, ]
+
+```
+
+Here we have divided our dataset to training and test data set. This dataset includes 160 variables. 
+
+#### Data Cleanup 
+
+First, the training data set is explored for missing values. 
+
+```{r MissingValues}
+NAValues = sapply(TrainingSet, function(x) sum(is.na(x)))
+threshold = as.integer(names(table(NAValues))[2])
+table(NAValues)
+VarNo1 = NCOL(TrainingSet)
+TrainingSet = TrainingSet[,NAValues<threshold]
+TestSet = TestSet[,NAValues<threshold]
+``` 
+
+Out of `r NROW(TrainingSet)` observations of `r VarNo1` variables in our Training Set, some variables have `r threshold` missing values. This is more than `r round(threshold/NROW(TrainingSet)*100,2)` % for these variables. Hence, we will ignore these variables as we basically do not have enough information about them. This leaves us with `r NCOL(TrainingSet)` variables for training. The same is applied to the test set. 
+
+Next we will check for variables which don't have enough variability (They are fixed), and remove them. For this simply the variance of the remaining variables is checked: 
+
+```{r VariabilityCheck}
+Var <- nearZeroVar(TrainingSet)
+TrainingSet <- TrainingSet[-Var]
+TestSet  <- TestSet[-Var]
+TrainingSet <- TrainingSet[6:59]
+TestSet  <- TestSet[6:59]
+```
+
+The first 5 variables are for identification purposes only, so they will be removed as well. This leaves us with `r NCOL(TrainingSet)` variables for training. 
+
+#### Data Analysis 
+As the first step, we will look at the correlation between the remaining variables is oberved: 
+
+```{r CorrMAtrix}
+CorMatrix <- cor(TrainingSet[, -54])
+corrplot(CorMatrix, order = "FPC", method = "shade", type = "lower", 
+         tl.cex = 0.8, tl.col = rgb(1, 1, 1))
+```
+
+Here, darker colors are indicators of higher correlations. As it can be seen, not too many variables are highly correlated here. 
+
+#### Model Prediction 
+Random Forests, and Decision Tree will be applied for model prediction, and their accuracy will be compared on the test subset we have created. The best obtained model will be used for final quiz evaluation. 
+
+##### Random Forests 
+
+```{r RandomForest}
+RFControl <- trainControl(method="cv", number=3, verboseIter=FALSE)
+RFModel <- train(classe ~ ., data=TrainingSet, method="rf",
+                          trControl=RFControl)
+RFModel$finalModel
+
+RFPredict <- predict(RFModel, newdata=TestSet)
+RFMatrix <- confusionMatrix(RFPredict, TestSet$classe)
+RFMatrix
+```
+
+Random forest accuracy is `r round(RFMatrix$overall['Accuracy'], 4)`. 
+
+##### Decision Tree
+
+```{r DecisionTree}
+DTModel <- rpart(classe ~ ., data=TrainingSet, method="class")
+fancyRpartPlot(DTModel)
+
+DTPredict <- predict(DTModel, newdata=TestSet, type="class")
+DTMatrix <- confusionMatrix(DTPredict, TestSet$classe)
+DTMatrix
+```
+
+Decision Tree accuracy is `r round(DTMatrix$overall['Accuracy'], 4)`. 
+
+#### Best model selection 
+
+Comparing the accuracy of the two models obtained, we conclude that Random Forest model is a better model for prediction. We use this model to predict the answers for the final quiz. 
+
+```{r finalPrediction}
+FinalPredict <- predict(RFModel, newdata=testing)
+FinalPredict
+```
+
